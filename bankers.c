@@ -1,124 +1,105 @@
 #include <stdio.h>
-#include <stdbool.h>
 
-#define MAX_PROCESSES 10
-#define MAX_RESOURCES 10
+struct file {
+    int all[10];
+    int max[10];
+    int need[10];
+    int flag;
+};
 
-int processes, resources;
-int total_resources[MAX_RESOURCES];
-int max[MAX_PROCESSES][MAX_RESOURCES];
-int allocation[MAX_PROCESSES][MAX_RESOURCES];
-int need[MAX_PROCESSES][MAX_RESOURCES];
-bool finish[MAX_PROCESSES];
+void main() {
+    struct file f[10];
+    int fl;
+    int i, j, k, p, b, n, r, g, cnt = 0, id, newr;
+    int avail[10], seq[10];
 
-// Function to check if resources can be safely allocated to a process
-bool isSafeState(int safeSequence[]) {
-    int work[MAX_RESOURCES];
-    bool finish_copy[MAX_PROCESSES];
-    int i, j;
+    printf("Enter number of processes -- ");
+    scanf("%d", &n);
 
-    // Initialize work and finish_copy arrays
-    for (i = 0; i < resources; i++) {
-        work[i] = total_resources[i];
+    printf("Enter number of resources -- ");
+    scanf("%d", &r);
+
+    for (i = 0; i < n; i++) {
+        printf("Enter details for P%d\n", i);
+        printf("Enter allocation -- ");
+        for (j = 0; j < r; j++)
+            scanf("%d", &f[i].all[j]);
+
+        printf("Enter Max -- ");
+        for (j = 0; j < r; j++)
+            scanf("%d", &f[i].max[j]);
+
+        f[i].flag = 0;
     }
 
-    for (i = 0; i < processes; i++) {
-        finish_copy[i] = finish[i];
+    printf("Enter Available Resources -- ");
+    for (i = 0; i < r; i++)
+        scanf("%d", &avail[i]);
+
+    printf("\nEnter New Request Details -- \n");
+    printf("Enter pid -- ");
+    scanf("%d", &id);
+
+    printf("Enter Request for Resources -- ");
+    for (i = 0; i < r; i++) {
+        scanf("%d", &newr);
+        f[id].all[i] += newr;
+        avail[i] = avail[i] - newr;
     }
 
-    // Find an unfinished process that can be allocated resources
-    bool found;
-    int safeIndex = 0;
-    do {
-        found = false;
-        for (i = 0; i < processes; i++) {
-            if (!finish_copy[i]) {
-                bool canBeAllocated = true;
-                for (j = 0; j < resources; j++) {
-                    if (need[i][j] > work[j]) {
-                        canBeAllocated = false;
-                        break;
-                    }
+    for (i = 0; i < n; i++) {
+        for (j = 0; j < r; j++) {
+            f[i].need[j] = f[i].max[j] - f[i].all[j];
+            if (f[i].need[j] < 0)
+                f[i].need[j] = 0;
+        }
+    }
+
+    cnt = 0;
+    fl = 0;
+    while (cnt != n) {
+        g = 0;
+        for (j = 0; j < n; j++) {
+            if (f[j].flag == 0) {
+                b = 0;
+                for (p = 0; p < r; p++) {
+                    if (avail[p] >= f[j].need[p])
+                        b = b + 1;
+                    else
+                        b = b - 1;
                 }
 
-                if (canBeAllocated) {
-                    found = true;
-                    safeSequence[safeIndex++] = i; // Add the process to the safe sequence
-                    for (j = 0; j < resources; j++) {
-                        work[j] += allocation[i][j];
-                    }
-                    finish_copy[i] = true;
+                if (b == r) {
+                    printf("\nP%d is visited", j);
+                    seq[fl++] = j;
+                    f[j].flag = 1;
+
+                    for (k = 0; k < r; k++)
+                        avail[k] = avail[k] + f[j].all[k];
+
+                    cnt = cnt + 1;
+                    printf("(");
+                    for (k = 0; k < r; k++)
+                        printf("%3d", avail[k]);
+                    printf(")");
+                    g = 1;
                 }
             }
         }
-    } while (found);
 
-    // If all processes are finished, the state is safe
-    for (i = 0; i < processes; i++) {
-        if (!finish_copy[i]) {
-            return false;
+        if (g == 0) {
+            printf("\nREQUEST NOT GRANTED -- DEADLOCK OCCURRED");
+            printf("\nSYSTEM IS IN UNSAFE STATE");
+            goto y;
         }
     }
 
-    return true;
-}
+    printf("\nSYSTEM IS IN SAFE STATE");
+    printf("\nThe Safe Sequence is -- (");
+    for (i = 0; i < fl; i++)
+        printf("P%d ", seq[i]);
+    printf(")");
 
-// Function to print the table showing resources, allocation, max, need, and available for each process
-
-int main() {
-    int i, j;
-    int safeSequence[MAX_PROCESSES];
-
-    printf("Enter the number of processes: ");
-    scanf("%d", &processes);
-
-    printf("Enter the number of resources: ");
-    scanf("%d", &resources);
-
-    printf("Enter the total resources:\n");
-    for (i = 0; i < resources; i++) {
-        scanf("%d", &total_resources[i]);
-    }
-
-    printf("Enter the maximum demand of each process:\n");
-    for (i = 0; i < processes; i++) {
-        for (j = 0; j < resources; j++) {
-            scanf("%d", &max[i][j]);
-        }
-    }
-
-    printf("Enter the allocated resources for each process:\n");
-    for (i = 0; i < processes; i++) {
-        for (j = 0; j < resources; j++) {
-            scanf("%d", &allocation[i][j]);
-            need[i][j] = max[i][j] - allocation[i][j];
-        }
-        finish[i] = false; // Initialize all processes as unfinished
-    }
-
-    // Calculate available resources by subtracting allocated resources from total resources
-    for (i = 0; i < resources; i++) {
-        for (j = 0; j < processes; j++) {
-            total_resources[i] -= allocation[j][i];
-        }
-    }
-
-    // Print the table
-
-
-    // Perform Banker's algorithm to check if it is safe to allocate resources
-    bool isSafe = isSafeState(safeSequence);
-
-    if (isSafe) {
-        printf("\nSafe state: Resources can be allocated to processes without causing deadlock.\n");
-        printf("Safe sequence: ");
-        for (i = 0; i < processes; i++) {
-            printf("P%d ", safeSequence[i]);
-        }
-        printf("\n");
-    } else {
-        printf("\nUnsafe state: Resources cannot be allocated to processes without causing deadlock.\n");
-    }
-
-    return 0;
+y:
+    printf("\n");
 }
